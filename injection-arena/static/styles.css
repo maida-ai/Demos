@@ -134,6 +134,10 @@ a:hover { text-decoration: underline; }
 .dot.red { background: var(--danger); box-shadow: 0 0 8px var(--danger); }
 
 .transcript { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+/* Transcript entries must keep their natural height and never be compressed by
+   the flex column (an item with overflow:hidden otherwise gets a 0 min-height
+   and collapses to a thin line). */
+.transcript > * { flex-shrink: 0; }
 
 .msg {
   border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px;
