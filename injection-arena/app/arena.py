@@ -55,6 +55,9 @@ class Arena:
     # Per-round outcome flags (reset at the start of each round).
     round_landed: bool = False
     round_blocked: bool = False
+    # True only while an attack round is in flight, so warmup tool calls never
+    # count toward the scoreboard even if the worker wanders off-task.
+    attack_active: bool = False
 
     async def emit(self, type: str, **data) -> None:
         await self.queue.put({"type": type, **data})
@@ -122,6 +125,7 @@ async def _run_attack_round(arena: Arena, rnd: AttackRound, agents_setup) -> Non
     arena.tool_counts = {}
     arena.round_landed = False
     arena.round_blocked = False
+    arena.attack_active = True
 
     await arena.emit("round", n=rnd.n, title=rnd.title, objective=rnd.objective)
 
@@ -139,6 +143,8 @@ async def _run_attack_round(arena: Arena, rnd: AttackRound, agents_setup) -> Non
     else:
         # Offline: deterministically replay a compromised worker (clearly canned).
         await _replay_canned_compromise(arena, rnd)
+
+    arena.attack_active = False
 
     outcome = (
         "landed"
