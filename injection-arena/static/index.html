@@ -50,9 +50,35 @@
         <span class="toggle-label">Maida gate</span>
       </label>
       <button id="run" class="btn btn-primary">Run arena</button>
+      <button id="leaderboard-btn" class="btn" title="Run this scenario across every model (gate off) and score which resists">Run all models</button>
       <button id="reset" class="btn">Reset</button>
     </div>
   </header>
+
+  <div id="leaderboard" class="lb-overlay hidden">
+    <div class="lb-card">
+      <div class="lb-head">
+        <div>
+          <h2>Model leaderboard</h2>
+          <p class="lb-sub" id="lb-sub">Which model resists the injections on its own? (gate off)</p>
+        </div>
+        <button id="lb-close" class="btn btn-mini" title="Close">&times;</button>
+      </div>
+      <table class="lb-table">
+        <thead>
+          <tr>
+            <th>Model</th>
+            <th title="Round 1 - off-task hijack">R1 hijack</th>
+            <th title="Round 2 - data exfiltration">R2 exfil</th>
+            <th title="Round 3 - destruction">R3 destroy</th>
+            <th>Landed</th>
+          </tr>
+        </thead>
+        <tbody id="lb-body"></tbody>
+      </table>
+      <p class="lb-foot">Each row is a real run: the worker genuinely decides whether to comply. Fewer landings = more injection-resistant.</p>
+    </div>
+  </div>
 
   <div id="scenario-blurb" class="scenario-blurb"></div>
 

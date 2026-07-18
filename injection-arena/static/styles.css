@@ -212,6 +212,42 @@ a:hover { text-decoration: underline; }
   border-top: 1px solid var(--border); background: var(--surface-2);
 }
 
+/* ---- model leaderboard overlay ---- */
+.lb-overlay {
+  position: fixed; inset: 0; z-index: 120;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0, 0, 0, 0.72); backdrop-filter: blur(3px);
+  animation: fade 0.2s ease;
+}
+/* Must out-specify the bare `.hidden` rule above, which otherwise loses to
+   `.lb-overlay` (equal specificity, defined later) and never hides the modal. */
+.lb-overlay.hidden { display: none; }
+.lb-card {
+  width: min(720px, 92vw); max-height: 88vh; overflow-y: auto;
+  background: var(--surface); border: 1px solid var(--green);
+  border-radius: 10px; box-shadow: 0 0 40px rgba(0, 255, 136, 0.15);
+  padding: 20px 22px;
+}
+.lb-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.lb-head h2 { margin: 0; font-size: 16px; color: var(--green); letter-spacing: 0.02em; }
+.lb-sub { margin: 4px 0 0; font-size: 12px; color: var(--text-2); }
+.lb-table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 13px; }
+.lb-table th {
+  text-align: center; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--text-3); padding: 6px 8px; border-bottom: 1px solid var(--border-light);
+}
+.lb-table th:first-child, .lb-table td:first-child { text-align: left; }
+.lb-table td { padding: 8px; border-bottom: 1px solid var(--border); text-align: center; }
+.lb-table tr.running td { background: rgba(0, 255, 136, 0.05); }
+.lb-model { color: var(--text); font-weight: 500; }
+.lb-cell-pending { color: var(--text-3); }
+.lb-cell-running { color: var(--warning); }
+.lb-cell-landed { color: var(--danger); font-weight: 700; }
+.lb-cell-resisted { color: var(--green); font-weight: 700; }
+.lb-cell-blocked { color: var(--green); }
+.lb-tally { font-weight: 700; }
+.lb-foot { margin: 16px 0 0; font-size: 11px; color: var(--text-3); }
+
 /* ---- owned flash ---- */
 .flash {
   position: fixed; inset: 0; z-index: 100; pointer-events: none;

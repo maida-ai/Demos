@@ -13,10 +13,16 @@ const modelSel = el("model");
 const blurb = el("scenario-blurb");
 const injectionInput = el("injection");
 const clearInjectionBtn = el("clear-injection");
+const leaderboardBtn = el("leaderboard-btn");
+const lbOverlay = el("leaderboard");
+const lbBody = el("lb-body");
+const lbSub = el("lb-sub");
+const lbClose = el("lb-close");
 
 let source = null;
 let scenarioBlurbs = {};
 let isLive = false;
+let models = [];
 
 function esc(s) {
   return String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
@@ -204,10 +210,95 @@ function run() {
   source.onerror = () => finish();
 }
 
+/* ---- model leaderboard: run the scenario across every model (gate off) ---- */
+const LB_OUTCOME = {
+  landed: ["\u2718 landed", "lb-cell-landed"],
+  resisted: ["\u2714 resisted", "lb-cell-resisted"],
+  blocked: ["\u2714 blocked", "lb-cell-blocked"],
+};
+
+function setControlsDisabled(d) {
+  runBtn.disabled = d;
+  leaderboardBtn.disabled = d;
+  gateToggle.disabled = d;
+  scenarioSel.disabled = d;
+  resetBtn.disabled = d;
+  modelSel.disabled = d || !isLive;
+  injectionInput.disabled = d || !isLive;
+}
+
+function buildLeaderboard() {
+  lbBody.innerHTML = "";
+  const rows = {};
+  models.forEach((m) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td class="lb-model">${esc(m)}</td>
+      <td class="lb-cell-pending" data-r="1">&mdash;</td>
+      <td class="lb-cell-pending" data-r="2">&mdash;</td>
+      <td class="lb-cell-pending" data-r="3">&mdash;</td>
+      <td class="lb-tally lb-cell-pending">&mdash;</td>`;
+    lbBody.appendChild(tr);
+    rows[m] = tr;
+  });
+  return rows;
+}
+
+function runOneModel(model, scenario, onResult) {
+  return new Promise((resolve) => {
+    const params = new URLSearchParams({ gate: "off", scenario, model });
+    const es = new EventSource(`/run?${params.toString()}`);
+    es.onmessage = (e) => {
+      const ev = JSON.parse(e.data);
+      if (ev.type === "attack_result") onResult(ev.n, ev.outcome);
+      else if (ev.type === "done" || ev.type === "error") { es.close(); resolve(); }
+    };
+    es.onerror = () => { es.close(); resolve(); };
+  });
+}
+
+async function runLeaderboard() {
+  if (!isLive || !models.length) return;
+  reset();
+  const rows = buildLeaderboard();
+  const scenarioName = scenarioSel.options[scenarioSel.selectedIndex]?.text || "";
+  lbSub.textContent = `Scenario: ${scenarioName} \u2014 which model resists on its own? (gate off)`;
+  lbOverlay.classList.remove("hidden");
+  setControlsDisabled(true);
+  leaderboardBtn.textContent = "Running...";
+
+  for (const m of models) {
+    const tr = rows[m];
+    tr.classList.add("running");
+    tr.querySelectorAll("[data-r]").forEach((c) => { c.textContent = "\u2026"; c.className = "lb-cell-running"; });
+    let landed = 0;
+    await runOneModel(m, scenarioSel.value, (n, outcome) => {
+      const cell = tr.querySelector(`[data-r="${n}"]`);
+      if (cell) {
+        const [txt, cls] = LB_OUTCOME[outcome] || ["?", ""];
+        cell.textContent = txt;
+        cell.className = cls;
+      }
+      if (outcome === "landed") landed += 1;
+    });
+    const tally = tr.querySelector(".lb-tally");
+    tally.textContent = `${landed}/3`;
+    tally.className = `lb-tally ${landed ? "lb-cell-landed" : "lb-cell-resisted"}`;
+    tr.classList.remove("running");
+  }
+
+  leaderboardBtn.textContent = "Run all models";
+  setControlsDisabled(false);
+}
+
 runBtn.addEventListener("click", run);
 resetBtn.addEventListener("click", reset);
 scenarioSel.addEventListener("change", updateBlurb);
 clearInjectionBtn.addEventListener("click", () => { injectionInput.value = ""; injectionInput.focus(); });
+leaderboardBtn.addEventListener("click", runLeaderboard);
+function closeLeaderboard() { lbOverlay.classList.add("hidden"); }
+lbClose.addEventListener("click", closeLeaderboard);
+lbOverlay.addEventListener("click", (e) => { if (e.target === lbOverlay) closeLeaderboard(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeLeaderboard(); });
 
 fetch("/api/config")
   .then((r) => r.json())
@@ -222,8 +313,9 @@ fetch("/api/config")
       opt.textContent = s.name;
       scenarioSel.appendChild(opt);
     });
+    models = cfg.models || [];
     modelSel.innerHTML = "";
-    cfg.models.forEach((m) => {
+    models.forEach((m) => {
       const opt = document.createElement("option");
       opt.value = m;
       opt.textContent = m;
@@ -235,6 +327,8 @@ fetch("/api/config")
       modelSel.title = "No OpenAI key detected - running canned mode";
       injectionInput.disabled = true;
       injectionInput.title = "Custom injections need a live model (no OpenAI key detected)";
+      leaderboardBtn.disabled = true;
+      leaderboardBtn.title = "The leaderboard needs a live model (no OpenAI key detected)";
     }
     updateBlurb();
   })
