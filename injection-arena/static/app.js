@@ -11,6 +11,8 @@ const flash = el("flash");
 const scenarioSel = el("scenario");
 const modelSel = el("model");
 const blurb = el("scenario-blurb");
+const injectionInput = el("injection");
+const clearInjectionBtn = el("clear-injection");
 
 let source = null;
 let scenarioBlurbs = {};
@@ -158,6 +160,7 @@ function finish() {
   gateToggle.disabled = false;
   scenarioSel.disabled = false;
   modelSel.disabled = !isLive;
+  injectionInput.disabled = !isLive;
   runBtn.textContent = "Run arena";
   if (source) { source.close(); source = null; }
 }
@@ -186,6 +189,7 @@ function run() {
   gateToggle.disabled = true;
   scenarioSel.disabled = true;
   modelSel.disabled = true;
+  injectionInput.disabled = true;
   runBtn.textContent = "Running...";
   const gate = gateToggle.checked ? "on" : "off";
   const params = new URLSearchParams({
@@ -193,6 +197,8 @@ function run() {
     scenario: scenarioSel.value,
     model: modelSel.value,
   });
+  const injection = injectionInput.value.trim();
+  if (injection) params.set("injection", injection);
   source = new EventSource(`/run?${params.toString()}`);
   source.onmessage = (e) => handle(JSON.parse(e.data));
   source.onerror = () => finish();
@@ -201,6 +207,7 @@ function run() {
 runBtn.addEventListener("click", run);
 resetBtn.addEventListener("click", reset);
 scenarioSel.addEventListener("change", updateBlurb);
+clearInjectionBtn.addEventListener("click", () => { injectionInput.value = ""; injectionInput.focus(); });
 
 fetch("/api/config")
   .then((r) => r.json())
@@ -226,6 +233,8 @@ fetch("/api/config")
     if (!cfg.live) {
       modelSel.disabled = true;
       modelSel.title = "No OpenAI key detected - running canned mode";
+      injectionInput.disabled = true;
+      injectionInput.title = "Custom injections need a live model (no OpenAI key detected)";
     }
     updateBlurb();
   })

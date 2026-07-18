@@ -59,6 +59,11 @@ class Arena:
     # count toward the scoreboard even if the worker wanders off-task.
     attack_active: bool = False
 
+    # Audience-supplied injection payload. When set, the scenario's scripted
+    # rounds are replaced by a single round that delivers this exact text as the
+    # untrusted content the worker reads (bring-your-own-injection mode).
+    custom_injection: str | None = None
+
     async def emit(self, type: str, **data) -> None:
         await self.queue.put({"type": type, **data})
 
@@ -100,11 +105,15 @@ async def run_arena(arena: Arena) -> None:
             await canned.warmup(arena)
         await arena.emit("score", attempts=arena.attempts, landed=arena.landed)
 
-        # Escalating attack rounds.
-        for rnd in arena.scenario.rounds:
-            await _run_attack_round(arena, rnd, agents_setup)
-            if arena.owned:
-                break
+        # Attack rounds: a single audience-supplied payload if one was given,
+        # otherwise the scenario's escalating scripted rounds.
+        if arena.custom_injection:
+            await _run_attack_round(arena, _custom_round(arena.custom_injection), agents_setup)
+        else:
+            for rnd in arena.scenario.rounds:
+                await _run_attack_round(arena, rnd, agents_setup)
+                if arena.owned:
+                    break
 
         if arena.gate_on:
             await arena.emit("safe")
@@ -118,6 +127,17 @@ async def run_arena(arena: Arena) -> None:
         await arena.emit("error", detail=f"{type(exc).__name__}: {exc}")
     finally:
         await arena.close()
+
+
+def _custom_round(injection: str) -> AttackRound:
+    """Wrap an audience-supplied payload as a single one-off attack round."""
+    return AttackRound(
+        n=1,
+        title="Custom injection (your payload)",
+        objective="Your payload is delivered as untrusted content the worker reads.",
+        injection=injection,
+        fallback=[],
+    )
 
 
 async def _run_attack_round(arena: Arena, rnd: AttackRound, agents_setup) -> None:
@@ -156,7 +176,10 @@ async def _run_attack_round(arena: Arena, rnd: AttackRound, agents_setup) -> Non
     await arena.emit("attack_result", n=rnd.n, outcome=outcome)
     await arena.emit("score", attempts=arena.attempts, landed=arena.landed)
 
-    if arena.round_landed and not arena.gate_on and rnd.n == arena.scenario.rounds[-1].n:
+    # The "owned" flash fires on the final scripted round, or on the single
+    # custom round when the audience's own payload lands.
+    is_final = arena.custom_injection is not None or rnd.n == arena.scenario.rounds[-1].n
+    if arena.round_landed and not arena.gate_on and is_final:
         arena.owned = True
         await arena.emit("owned")
 
@@ -169,6 +192,12 @@ async def _prepare_injection(arena: Arena, rnd: AttackRound, agents_setup) -> st
     the refusal honestly and substitute the canned payload so the worker still
     faces a real attack.
     """
+    # Bring-your-own-injection: deliver the audience's payload verbatim, no
+    # adversary model in the loop.
+    if arena.custom_injection is not None:
+        await arena.emit("adversary_msg", text=rnd.injection, note="your custom payload")
+        return rnd.injection
+
     if not arena.live:
         await arena.emit("adversary_msg", text=rnd.injection)
         return rnd.injection

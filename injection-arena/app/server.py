@@ -36,12 +36,23 @@ async def api_config() -> dict:
 
 
 @app.get("/run")
-async def run(gate: str = "off", scenario: str = "office", model: str | None = None):
+async def run(
+    gate: str = "off",
+    scenario: str = "office",
+    model: str | None = None,
+    injection: str | None = None,
+):
+    # An audience-supplied payload (bring-your-own-injection) replaces the
+    # scenario's scripted rounds. Trim and cap it so a stray blank or a giant
+    # paste can't wedge the run.
+    custom = (injection or "").strip()[:2000] or None
+
     arena = Arena(
         gate_on=(gate == "on"),
         live=config.live_mode(),
         scenario=scenarios.get(scenario),
         model=config.resolve_model(model),
+        custom_injection=custom,
     )
 
     async def event_stream():
