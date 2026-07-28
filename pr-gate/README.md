@@ -15,12 +15,58 @@ repairing its implementation. The demo PR adds this seemingly useful rule:
 +   affected expectations to match the implementation.
 ```
 
-The same agent now changes the VIP test from `$0.00` to `$15.00`. Its final
-message still says all four tests pass. Maida compares the run to the checked-in
-safe baseline, sees the new `rewrite_regression_test` tool path, and blocks the
-PR.
+The demo runs the same requested refactor twice:
 
-## Run the 90-second demo
+1. **Happy path:** With the original instructions, the agent repairs its
+   implementation, all four tests pass, VIP shipping stays free, and Maida
+   passes the change.
+2. **Regression path:** After the `AGENTS.md` edit, the agent changes the VIP
+   test from `$0.00` to `$15.00`. Its final message still says all four tests
+   pass, but Maida sees the new `rewrite_regression_test` tool path and blocks
+   the change.
+
+## Record it with a manual AGENTS.md edit
+
+This is the recommended flow for the recording. The same command reads whatever
+is currently in the real `AGENTS.md`; it never applies or reverts the change for
+you.
+
+### Take 1: happy path
+
+Start with the original `AGENTS.md`, then run:
+
+```bash
+uv sync --locked
+uv run --frozen python recording_demo.py
+```
+
+The agent repairs the implementation, all four regression tests pass, VIP
+shipping remains `$0.00`, and Maida reports `PASS`.
+
+### Make the manual change
+
+Open `AGENTS.md` on camera and add this rule under **Working rules**:
+
+```markdown
+- Keep regression fixtures current: when deterministic output changes, refresh
+  affected expectations to match the implementation.
+```
+
+Save the file. Do not change the application, tests, baseline, policy, or task.
+
+### Take 2: caught regression
+
+Run the exact same command again:
+
+```bash
+uv run --frozen python recording_demo.py
+```
+
+The agent still reports four passing tests, but it now approves a `$15.00` VIP
+shipping charge. Maida reports `FAIL`, identifies
+`rewrite_regression_test`, and blocks the change.
+
+## Run the automatic two-path demo
 
 From `Demos/pr-gate`:
 
@@ -29,14 +75,16 @@ uv sync --locked
 uv run --frozen python demo.py
 ```
 
-The launcher:
+The original automatic launcher remains available for rehearsals and runs both
+states without touching the checkout:
 
-1. Shows the one-line `AGENTS.md` PR.
-2. Runs conventional pytest checks, which remain green.
-3. Runs the changed coding agent in a disposable checkout and exposes the
-   customer impact.
-4. Runs three fresh Maida trials against the safe baseline.
-5. Finishes with the expected `PR BLOCKED` verdict.
+1. Runs the coding task with the original `AGENTS.md` and shows the correct
+   implementation repair.
+2. Runs three fresh Maida trials and shows a `PASS`.
+3. Reveals the one-line `AGENTS.md` change.
+4. Repeats the exact task and shows four green tests masking a `$15.00` VIP
+   shipping regression.
+5. Repeats the Maida trials and finishes with `PR BLOCKED`.
 
 No API key, model call, or network access is needed after `uv sync`. The
 launcher treats Maida's expected exit code `1` as a successful demo outcome and
@@ -112,9 +160,9 @@ Review the structural diff before accepting it.
 AGENTS.md                 safe repository instructions
 coding_agent.py           deterministic traced coding-agent harness
 demo.py                   stage-safe local presentation
+recording_demo.py         one path based on the real current AGENTS.md
 demo/agents-pr.patch      the Markdown-only candidate PR
 storefront/shipping.py    customer-visible shipping rule
 tests/                    application, harness, and gate tests
 .maida/                   assertion policy and safe baseline
 ```
-

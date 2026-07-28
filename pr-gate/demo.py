@@ -113,8 +113,23 @@ def _candidate_workspace(temp_root: Path) -> Path:
     return project
 
 
+def _workspace_for_run(
+    temp_root: Path,
+    *,
+    candidate: bool,
+    agents_source: Path | None = None,
+) -> Path:
+    if agents_source is not None:
+        project = _copy_demo(temp_root)
+        shutil.copy2(agents_source, project / "AGENTS.md")
+        return project
+    if candidate:
+        return _candidate_workspace(temp_root)
+    return _copy_demo(temp_root)
+
+
 def _show_patch(palette: Palette) -> None:
-    print(palette.title("1. The pull request"))
+    print(palette.title("THE CHANGE — One seemingly innocent AGENTS.md rule"))
     for line in PATCH_PATH.read_text(encoding="utf-8").splitlines():
         if line.startswith("+++") or line.startswith("---"):
             print(palette.quiet(line))
@@ -129,25 +144,20 @@ def _show_patch(palette: Palette) -> None:
     print()
 
 
-def _show_conventional_tests(palette: Palette) -> None:
-    print(palette.title("2. Conventional CI"))
-    print(palette.quiet("$ uv run --frozen pytest -q"))
-    completed = _run(
-        ["uv", "run", "--frozen", "pytest", "-q"],
-        cwd=PROJECT_ROOT,
-    )
-    print((completed.stdout + completed.stderr).strip())
-    if completed.returncode != 0:
-        raise RuntimeError("The demo project's conventional tests failed")
-    print(palette.good("✓ Ordinary tests are green — this PR only changes Markdown."))
-    print()
-
-
-def _show_candidate_agent(palette: Palette) -> None:
-    print(palette.title("3. What the changed instructions teach the coding agent"))
+def _show_agent_execution(
+    palette: Palette,
+    *,
+    candidate: bool,
+    agents_source: Path | None = None,
+) -> None:
+    print(palette.quiet("Coding-agent execution:"))
     with tempfile.TemporaryDirectory(prefix="pr-gate-preview-") as temp:
         temp_root = Path(temp)
-        project = _candidate_workspace(temp_root)
+        project = _workspace_for_run(
+            temp_root,
+            candidate=candidate,
+            agents_source=agents_source,
+        )
         env = os.environ.copy()
         env["MAIDA_DATA_DIR"] = str(temp_root / "preview-trace")
         completed = _run(
@@ -173,23 +183,35 @@ def _show_candidate_agent(palette: Palette) -> None:
         if impact.returncode != 0:
             raise RuntimeError(impact.stderr)
         fee_cents = int(impact.stdout.strip())
-        print(
-            palette.bad(
-                f"Impact: the green suite now approves a ${fee_cents / 100:.2f} "
-                "shipping charge for a VIP customer."
+        if candidate:
+            print(
+                palette.bad(
+                    f"Impact: the green suite now approves a ${fee_cents / 100:.2f} "
+                    "shipping charge for a VIP customer."
+                )
             )
-        )
+        else:
+            print(
+                palette.good(
+                    f"Impact check: VIP shipping remains ${fee_cents / 100:.2f}."
+                )
+            )
     print()
 
 
-def _run_maida_gate(palette: Palette) -> None:
+def _run_maida_gate(
+    palette: Palette,
+    *,
+    candidate: bool,
+    agents_source: Path | None = None,
+) -> None:
     if not BASELINE_PATH.is_file():
         raise RuntimeError(
             "Known-good baseline missing; run "
             "`uv run python demo.py --capture-baseline`"
         )
 
-    print(palette.title("4. Maida checks the agent, not just the final test color"))
+    print(palette.quiet("Maida behavioral regression gate:"))
     print(
         palette.quiet(
             "$ maida run coding_agent.py --baseline "
@@ -201,7 +223,11 @@ def _run_maida_gate(palette: Palette) -> None:
         tempfile.TemporaryDirectory(prefix="pr-gate-traces-") as traces,
     ):
         temp_root = Path(checkout)
-        project = _candidate_workspace(temp_root)
+        project = _workspace_for_run(
+            temp_root,
+            candidate=candidate,
+            agents_source=agents_source,
+        )
         _initialize_temp_repository(temp_root)
         env = os.environ.copy()
         env["MAIDA_DATA_DIR"] = traces
@@ -223,15 +249,30 @@ def _run_maida_gate(palette: Palette) -> None:
         print(completed.stdout.strip())
         if completed.stderr.strip():
             print(completed.stderr.strip(), file=sys.stderr)
-        if completed.returncode != 1:
+        expected_returncode = 1 if candidate else 0
+        if completed.returncode != expected_returncode:
             raise RuntimeError(
-                f"Expected Maida to block the candidate; exit={completed.returncode}"
+                "Unexpected Maida verdict for "
+                f"{'candidate' if candidate else 'safe'} path; "
+                f"exit={completed.returncode}"
             )
-        if "rewrite_regression_test" not in completed.stdout:
+        if candidate and "rewrite_regression_test" not in completed.stdout:
             raise RuntimeError("Maida report did not identify the new tool path")
+        if not candidate and "rewrite_regression_test" in completed.stdout:
+            raise RuntimeError("Safe path unexpectedly rewrote a regression test")
 
     print()
-    print(palette.bad("✗ PR BLOCKED: the agent learned to rewrite regression tests."))
+    if candidate:
+        print(
+            palette.bad("✗ PR BLOCKED: the agent learned to rewrite regression tests.")
+        )
+    else:
+        print(
+            palette.good(
+                "✓ HAPPY PATH: requested refactor is safe and the Maida gate passes."
+            )
+        )
+    print()
 
 
 def _capture_baseline() -> None:
@@ -301,11 +342,18 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     palette = Palette(enabled=not args.no_color and sys.stdout.isatty())
     try:
-        if not args.gate_only:
-            _show_patch(palette)
-            _show_conventional_tests(palette)
-            _show_candidate_agent(palette)
-        _run_maida_gate(palette)
+        if args.gate_only:
+            _run_maida_gate(palette, candidate=True)
+            return 0
+
+        print(palette.title("PATH 1 — Happy path with the original AGENTS.md"))
+        _show_agent_execution(palette, candidate=False)
+        _run_maida_gate(palette, candidate=False)
+
+        _show_patch(palette)
+        print(palette.title("PATH 2 — Same task after the AGENTS.md change"))
+        _show_agent_execution(palette, candidate=True)
+        _run_maida_gate(palette, candidate=True)
     except RuntimeError as error:
         print(f"demo error: {error}", file=sys.stderr)
         return 2
