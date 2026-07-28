@@ -1,0 +1,30 @@
+[project]
+name = "pr-gate-demo"
+version = "0.1.0"
+description = "A deterministic demo of Maida catching an AGENTS.md behavioral regression"
+readme = "README.md"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+    "maida-ai",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2,<10",
+    "ruff>=0.15.1,<0.16",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+maida-ai = { git = "https://github.com/maida-ai/maida.git", rev = "d141fe1596f66f793afe71e05492fefc064cfb7b" }
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88
