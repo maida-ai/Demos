@@ -74,6 +74,6 @@ jobs:
           agent-script: pr-gate/coding_agent.py
           baseline: pr-gate/.maida/baselines/coding-agent.json
           policy: pr-gate/.maida/policy.yaml
-          maida-version: "v0.5.3.post1"
+          maida-version: "@e69109354f881758d32c4d659fe368ba04049fa2"
           python-version: "3.13"
           post-comment: "true"

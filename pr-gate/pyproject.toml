@@ -25,3 +25,6 @@ testpaths = ["tests"]
 [tool.ruff]
 target-version = "py311"
 line-length = 88
+
+[tool.uv.sources]
+maida-ai = { git = "https://github.com/maida-ai/maida", rev = "e69109354f881758d32c4d659fe368ba04049fa2" }

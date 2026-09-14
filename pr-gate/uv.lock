@@ -168,8 +168,8 @@ wheels = [
 
 [[package]]
 name = "maida-ai"
-version = "0.5.3.post1"
-source = { registry = "https://pypi.org/simple" }
+version = "0.5.3.post1.dev16+e691093"
+source = { git = "https://github.com/maida-ai/maida?rev=e69109354f881758d32c4d659fe368ba04049fa2#e69109354f881758d32c4d659fe368ba04049fa2" }
 dependencies = [
     { name = "fastapi" },
     { name = "opentelemetry-api" },
@@ -179,10 +179,6 @@ dependencies = [
     { name = "pyyaml" },
     { name = "typer" },
     { name = "uvicorn" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/11/33/cecaeb4224c04fe178cfb0881136c25ecf482099de901fe62d91bad31f8b/maida_ai-0.5.3.post1.tar.gz", hash = "sha256:e7c320592ad75708fb72358afff7bd61a285813d0a5a327e8e95da9e54dc7ad1", size = 1001935, upload-time = "2026-09-11T17:49:24.258Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/a2/09/6e8ddaa3c07fafe362393d8a3d939e9221a8a7deb44813f79a6fbdf3b127/maida_ai-0.5.3.post1-py3-none-any.whl", hash = "sha256:53a295410c215e553bf42349118be40c473a4ddcf8ba498791deae7c157fd10e", size = 202209, upload-time = "2026-09-11T17:49:22.779Z" },
 ]
 
 [[package]]
@@ -320,7 +316,7 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "maida-ai", specifier = ">=0.5.3" }]
+requires-dist = [{ name = "maida-ai", git = "https://github.com/maida-ai/maida?rev=e69109354f881758d32c4d659fe368ba04049fa2" }]
 
 [package.metadata.requires-dev]
 dev = [

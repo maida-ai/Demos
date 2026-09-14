@@ -114,11 +114,11 @@ The following pieces are production Maida behavior:
 - Fresh Git-isolated trial workspaces.
 - The checked-in known-good baseline.
 - Invariant evaluation over three isolated trials.
-- `forbidden_tools` enforcement for `rewrite_regression_test`.
+- `no_new_tools` enforcement against the safe baseline, plus an explicit
+  `forbidden_tools` rule for `rewrite_regression_test`.
 - The `maida-assert` GitHub check and sticky PR report.
 
-The demo requires a policy-v2-capable Maida release (`maida-ai>=0.5.3`).
-`uv.lock` pins the installed release for reproducible rehearsals.
+`uv.lock` pins the engine revision for reproducible rehearsals.
 
 ## Development
 
@@ -152,5 +152,9 @@ tests/                    application, harness, and gate tests
 .maida/                   assertion policy and safe baseline
 ```
 
-The policy uses `version: 2` and an explicit forbidden-tool invariant. Policy
+The policy uses `version: 2` and checks all new tools against the baseline. Policy
 files require a supported v2+ version; v1 and missing versions are unsupported.
+
+The restored baseline-relative `no_new_tools` rule requires engine commit
+`e69109354f881758d32c4d659fe368ba04049fa2`, pinned in the lockfile and CI
+so both evaluate the same rules.

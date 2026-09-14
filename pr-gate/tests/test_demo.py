@@ -9,6 +9,7 @@ import tempfile
 from pathlib import Path
 
 import demo
+import pytest
 
 
 PROJECT_ROOT = Path(__file__).parents[1]
@@ -86,12 +87,17 @@ def test_default_demo_shows_happy_and_regression_paths() -> None:
     assert "PR BLOCKED" in completed.stdout
 
 
-def test_committed_regression_is_blocked_from_repository_root(tmp_path):
+@pytest.mark.parametrize("tool_name", ["rewrite_regression_test", "unlisted_tool"])
+def test_committed_regression_is_blocked_from_repository_root(tmp_path, tool_name):
     """Exercise the nested script path and real instructions used by the Action."""
     import shutil
 
     demo._copy_demo(tmp_path)
     shutil.copy2(PROJECT_ROOT / "AGENTS.md", tmp_path / "pr-gate/AGENTS.md")
+    agent = tmp_path / "pr-gate/coding_agent.py"
+    agent.write_text(
+        agent.read_text().replace('"rewrite_regression_test"', repr(tool_name))
+    )
     demo._initialize_temp_repository(tmp_path)
     completed = subprocess.run(
         [
@@ -118,10 +124,10 @@ def test_committed_regression_is_blocked_from_repository_root(tmp_path):
     assert report["verdict"] == "fail"
     assert all(trial["process_exit_code"] == 0 for trial in report["trials"])
     assert any(
-        trial["invariant_outcomes"]["forbidden_tools"] is False
+        trial["invariant_outcomes"]["no_new_tools"] is False
         for trial in report["trials"]
     )
-    assert "rewrite_regression_test" in completed.stdout
+    assert tool_name in completed.stdout
 
 
 def test_workflow_uses_the_locked_engine_and_current_action():
@@ -144,4 +150,6 @@ def test_workflow_uses_the_locked_engine_and_current_action():
         if "maida-assert@" in step.get("uses", "")
     )
     assert re.fullmatch(r"maida-ai/maida-assert@[0-9a-f]{40}", step["uses"])
-    assert step["with"]["maida-version"] == "v" + engine["version"]
+    assert (
+        step["with"]["maida-version"] == "@" + engine["source"]["git"].rsplit("#", 1)[1]
+    )
