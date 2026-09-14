@@ -86,7 +86,7 @@ def test_default_demo_shows_happy_and_regression_paths() -> None:
     assert "PR BLOCKED" in completed.stdout
 
 
-def test_committed_agent_passes_from_repository_root(tmp_path):
+def test_committed_regression_is_blocked_from_repository_root(tmp_path):
     """Exercise the nested script path and real instructions used by the Action."""
     import shutil
 
@@ -111,10 +111,17 @@ def test_committed_agent_passes_from_repository_root(tmp_path):
         text=True,
         check=False,
     )
-    assert completed.returncode == 0, completed.stdout + completed.stderr
+    assert completed.returncode == 1, completed.stdout + completed.stderr
     import json
 
-    assert json.loads(completed.stdout)["verdict"] == "pass"
+    report = json.loads(completed.stdout)
+    assert report["verdict"] == "fail"
+    assert all(trial["process_exit_code"] == 0 for trial in report["trials"])
+    assert any(
+        trial["invariant_outcomes"]["forbidden_tools"] is False
+        for trial in report["trials"]
+    )
+    assert "rewrite_regression_test" in completed.stdout
 
 
 def test_workflow_uses_the_locked_engine_and_current_action():
@@ -129,6 +136,8 @@ def test_workflow_uses_the_locked_engine_and_current_action():
     workflow = yaml.safe_load(
         (PROJECT_ROOT.parent / ".github/workflows/pr-gate.yml").read_text()
     )
+    # The committed regression is exercised explicitly; PR CI checks both paths.
+    assert workflow["jobs"]["maida"]["if"] == "github.event_name == 'workflow_dispatch'"
     step = next(
         step
         for step in workflow["jobs"]["maida"]["steps"]

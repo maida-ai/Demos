@@ -3,9 +3,9 @@
 One harmless-looking Markdown line can change how every coding agent behaves.
 This demo shows Maida catching that change before it reaches production.
 
-The checked-in instructions are the passing default. The tests and automatic
-demo apply the regression instruction in temporary copies; the CI gate checks
-the real checkout without accepting that regression.
+The checked-in instructions include the intentional regression below. The real
+CI gate is expected to reject that behavior. The automatic demo exercises both
+the safe instructions and the regression in temporary copies.
 
 The repository contains a tiny storefront with an important rule: VIP customers
 always receive free shipping. A deterministic test coding agent is asked to
@@ -94,28 +94,13 @@ No API key, model call, or network access is needed after `uv sync`. The
 launcher treats Maida's expected exit code `1` as a successful demo outcome and
 leaves the real checkout unchanged.
 
-## Prepare the live GitHub PR
+## Rehearse the GitHub check
 
-From the Demos repository root, apply the supplied one-file change:
+The checked-in instructions already contain the intentional regression. Normal pull requests run the safe and regressed paths as tests: the safe path must PASS and the candidate must FAIL for rewriting a regression test. CI succeeds when both results are correct.
 
-```bash
-git apply pr-gate/demo/agents-pr.patch
-git diff -- pr-gate/AGENTS.md
-```
+To publish the deliberately failing Action check, manually run **PR Gate Demo** on this branch. Its **Intentional regression demonstration (expected FAIL)** job publishes Maida's FAIL verdict. A red workflow is the expected result of this explicit rehearsal, not a failed installation. The job runs only on `workflow_dispatch`, so the practice fixture does not block unrelated contributions.
 
-Open that change through the normal PR workflow. The repository-level workflow
-runs only for `pr-gate/**` changes and publishes two independent signals:
-
-- `Conventional tests`: passes because the application itself did not change.
-- `Maida agent regression gate`: fails because the coding agent learned the new
-  `rewrite_regression_test` behavior.
-
-`AGENTS.md` is globally ignored on some developer machines. If Git does not show
-the intended file locally, stage it explicitly with:
-
-```bash
-git add --force pr-gate/AGENTS.md
-```
+For a separate demonstration PR, start from `demo/AGENTS.safe.md`, then apply `pr-gate/demo/agents-pr.patch`. Run the offline walkthrough on each state to see why green application tests can coexist with a failing behavioral check. Configure and verify required checks in a dedicated consumer repository before relying on an actual merge boundary.
 
 ## What is real
 
@@ -157,7 +142,7 @@ Review the structural diff before accepting it.
 ## Layout
 
 ```text
-AGENTS.md                 safe repository instructions
+AGENTS.md                 candidate instructions with the intentional regression
 coding_agent.py           deterministic traced coding-agent harness
 demo.py                   stage-safe local presentation
 recording_demo.py         one path based on the real current AGENTS.md
