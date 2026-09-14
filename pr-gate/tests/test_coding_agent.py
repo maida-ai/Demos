@@ -122,4 +122,4 @@ def test_repository_instructions_are_a_known_demo_state() -> None:
     actual = (PROJECT_ROOT / "AGENTS.md").read_text(encoding="utf-8")
     safe = (PROJECT_ROOT / "demo/AGENTS.safe.md").read_text(encoding="utf-8")
 
-    assert actual.replace(CANDIDATE_RULE, "") == safe
+    assert actual.replace(CANDIDATE_RULE, "").rstrip() == safe.rstrip()

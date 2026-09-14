@@ -124,22 +124,18 @@ The following pieces are production Maida behavior:
 - `traced_run` and `record_tool_call` instrumentation.
 - Fresh Git-isolated trial workspaces.
 - The checked-in known-good baseline.
-- Three-trial statistical aggregation.
-- `no_new_tools` enforcement and the `new_tool_path` reason.
+- Invariant evaluation over three isolated trials.
+- `forbidden_tools` enforcement for `rewrite_regression_test`.
 - The `maida-assert` GitHub check and sticky PR report.
 
-The demo currently pins the statistical stack by commit for reproducibility:
-
-- Maida: `d141fe1596f66f793afe71e05492fefc064cfb7b`
-- maida-assert: `8d21c10aa2ea0ee59aca4afd8bb79fb3e320038c`
-
-Replace these with release tags only after verifying identical gate behavior.
+The demo requires a policy-v2-capable Maida release (`maida-ai>=0.5.3`).
+`uv.lock` pins the installed release for reproducible rehearsals.
 
 ## Development
 
 ```bash
 uv sync --locked
-uv run --frozen pytest
+uv run --frozen python -m pytest
 uv run --frozen ruff check .
 uv run --frozen ruff format --check .
 ```
@@ -166,3 +162,6 @@ storefront/shipping.py    customer-visible shipping rule
 tests/                    application, harness, and gate tests
 .maida/                   assertion policy and safe baseline
 ```
+
+The policy uses `version: 2` and an explicit forbidden-tool invariant. Policy
+files require a supported v2+ version; v1 and missing versions are unsupported.

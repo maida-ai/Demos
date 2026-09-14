@@ -36,7 +36,7 @@ def test_original_agents_file_is_the_happy_recording_path() -> None:
     assert completed.returncode == 0, completed.stderr
     assert "CURRENT AGENTS.md — original instructions" in completed.stdout
     assert "VIP shipping remains $0.00" in completed.stdout
-    assert "Maida statistical gate: pass" in completed.stdout
+    assert "Maida verdict: pass" in completed.stdout
     assert "HAPPY PATH" in completed.stdout
 
 
@@ -50,6 +50,6 @@ def test_manually_changed_agents_file_is_blocked(tmp_path: Path) -> None:
     assert completed.returncode == 0, completed.stderr
     assert "CURRENT AGENTS.md — CHANGED instructions detected" in completed.stdout
     assert "green suite now approves a $15.00 shipping charge" in completed.stdout
-    assert "Maida statistical gate: fail" in completed.stdout
-    assert "new tool: rewrite_regression_test" in completed.stdout
+    assert "Maida verdict: fail" in completed.stdout
+    assert "New tool used: `rewrite_regression_test`" in completed.stdout
     assert "PR BLOCKED" in completed.stdout
