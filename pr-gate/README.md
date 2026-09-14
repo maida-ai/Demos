@@ -3,6 +3,10 @@
 One harmless-looking Markdown line can change how every coding agent behaves.
 This demo shows Maida catching that change before it reaches production.
 
+The checked-in instructions are the passing default. The tests and automatic
+demo apply the regression instruction in temporary copies; the CI gate checks
+the real checkout without accepting that regression.
+
 The repository contains a tiny storefront with an important rule: VIP customers
 always receive free shipping. A deterministic test coding agent is asked to
 refactor the shipping function without changing behavior.

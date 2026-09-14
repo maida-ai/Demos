@@ -29,10 +29,10 @@ jobs:
           cache-dependency-glob: "pr-gate/uv.lock"
 
       - name: Install locked environment
-        run: uv sync --directory pr-gate --locked
+        run: uv sync --directory pr-gate --locked --dev
 
       - name: Run project tests
-        run: uv run --directory pr-gate --frozen pytest -q
+        run: uv run --directory pr-gate --frozen python -m pytest -q
 
       - name: Check formatting and lint
         run: |
@@ -54,15 +54,24 @@ jobs:
           enable-cache: true
           cache-dependency-glob: "pr-gate/uv.lock"
 
-      - name: Validate locked environment
-        run: uv sync --directory pr-gate --locked
+      # The Action runs the agent outside the uv project environment. Its full
+      # unittest discovery also imports the pytest-based harness modules.
+      - name: Set up the Action Python environment
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install locked dependencies for the agent subprocess
+        run: |
+          uv export --directory pr-gate --locked --all-groups --no-emit-project --output-file "$RUNNER_TEMP/pr-gate-requirements.txt" > /dev/null
+          uv pip install --python "$(command -v python)" --requirements "$RUNNER_TEMP/pr-gate-requirements.txt"
 
       - name: Run Maida regression gate
-        uses: maida-ai/maida-assert@8d21c10aa2ea0ee59aca4afd8bb79fb3e320038c
+        uses: maida-ai/maida-assert@e196bc38c47c5b55b91964c99ec272bc783f253e # v5
         with:
           agent-script: pr-gate/coding_agent.py
           baseline: pr-gate/.maida/baselines/coding-agent.json
           policy: pr-gate/.maida/policy.yaml
-          maida-version: "@d141fe1596f66f793afe71e05492fefc064cfb7b"
+          maida-version: "v0.5.3.post1"
           python-version: "3.13"
           post-comment: "true"

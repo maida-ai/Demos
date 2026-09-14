@@ -84,3 +84,55 @@ def test_default_demo_shows_happy_and_regression_paths() -> None:
     assert "Maida verdict: fail" in completed.stdout
     assert "New tool used: `rewrite_regression_test`" in completed.stdout
     assert "PR BLOCKED" in completed.stdout
+
+
+def test_committed_agent_passes_from_repository_root(tmp_path):
+    """Exercise the nested script path and real instructions used by the Action."""
+    import shutil
+
+    demo._copy_demo(tmp_path)
+    shutil.copy2(PROJECT_ROOT / "AGENTS.md", tmp_path / "pr-gate/AGENTS.md")
+    demo._initialize_temp_repository(tmp_path)
+    completed = subprocess.run(
+        [
+            demo._maida_executable(),
+            "run",
+            "pr-gate/coding_agent.py",
+            "--baseline",
+            "pr-gate/.maida/baselines/coding-agent.json",
+            "--policy",
+            "pr-gate/.maida/policy.yaml",
+            "--format",
+            "json",
+        ],
+        cwd=tmp_path,
+        env={**os.environ, "MAIDA_DATA_DIR": str(tmp_path / "traces")},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    import json
+
+    assert json.loads(completed.stdout)["verdict"] == "pass"
+
+
+def test_workflow_uses_the_locked_engine_and_current_action():
+    import re
+    import tomllib
+    import yaml
+
+    lock = tomllib.loads((PROJECT_ROOT / "uv.lock").read_text())
+    engine = next(
+        package for package in lock["package"] if package["name"] == "maida-ai"
+    )
+    workflow = yaml.safe_load(
+        (PROJECT_ROOT.parent / ".github/workflows/pr-gate.yml").read_text()
+    )
+    step = next(
+        step
+        for step in workflow["jobs"]["maida"]["steps"]
+        if "maida-assert@" in step.get("uses", "")
+    )
+    assert re.fullmatch(r"maida-ai/maida-assert@[0-9a-f]{40}", step["uses"])
+    assert step["with"]["maida-version"] == "v" + engine["version"]
