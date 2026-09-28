@@ -1,0 +1,9 @@
+# Local environments and runtime artifacts retained after the source migration.
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.artifacts/
+.env
+.env.*
